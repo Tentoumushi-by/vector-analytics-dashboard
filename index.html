@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Вектор · Аналитика малого бизнеса</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #070a11;
+    --card: #101624;
+    --card2: #151d2e;
+    --border: rgba(148,163,184,.10);
+    --border2: rgba(148,163,184,.18);
+    --text: #e9edf5;
+    --muted: #b1b9c8;
+    --faint: #8a93a5;
+    --accent: #7c6cff;
+    --green: #2fd4a7;
+    --red: #f26d6d;
+    --amber: #f5a524;
+    --blue: #4f8cff;
+    --radius: 18px;
+    --sidebar-w: 264px;
+    --sidebar-w-collapsed: 88px;
+  }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: #070a11;
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0; z-index: -2; pointer-events: none;
+    background:
+      radial-gradient(700px 420px at 90% -10%, rgba(124,108,255,.13), transparent 60%),
+      radial-gradient(800px 500px at -15% 110%, rgba(47,212,167,.07), transparent 60%),
+      #070a11;
+  }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  input { font-family: inherit; }
+
+  /* ---------- Layout ---------- */
+  .app { display: flex; min-height: 100vh; }
+  .sidebar {
+    width: var(--sidebar-w); position: fixed; top: 0; bottom: 0; left: 0; z-index: 60;
+    display: flex; flex-direction: column;
+    background: rgba(10,14,22,.85); backdrop-filter: blur(14px);
+    border-right: 1px solid var(--border);
+    padding: 20px 14px;
+    transition: width .25s ease, transform .25s ease;
+  }
+  .sidebar.collapsed { width: var(--sidebar-w-collapsed); }
+  .brand { display: flex; align-items: center; gap: 12px; padding: 4px 10px 20px; }
+  .brand-mark {
+    width: 40px; height: 40px; border-radius: 12px; flex: 0 0 auto;
+    background: linear-gradient(135deg, var(--accent), #4f8cff);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 18px; color: #fff;
+    box-shadow: 0 8px 20px rgba(124,108,255,.35);
+  }
+  .sidebar.collapsed .brand-text, .sidebar.collapsed .nav-label, .sidebar.collapsed .sidebar-foot { display: none; }
+  .sidebar.collapsed .brand { justify-content: center; padding-bottom: 20px; }
+  .brand-name { font-weight: 700; font-size: 16px; letter-spacing: .2px; }
+  .brand-sub { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1.6px; }
+  .nav { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 14px; border-radius: 12px;
+    color: var(--muted); font-size: 14px; font-weight: 500;
+    text-align: left; width: 100%;
+    transition: all .2s ease;
+    position: relative;
+  }
+  .nav-item:hover { background: rgba(148,163,184,.07); color: var(--text); }
+  .nav-item.active { background: linear-gradient(90deg, rgba(124,108,255,.18), rgba(79,140,255,.08)); color: var(--text); }
+  .nav-item.active::before {
+    content:''; position:absolute; left:-14px; top:8px; bottom:8px; width:3px;
+    border-radius: 0 3px 3px 0; background: var(--accent);
+  }
+  .nav-item .nav-icon { display:flex; align-items:center; }
+  .nav-icon svg { width:20px; height:20px; }
+  .main { flex: 1; margin-left: var(--sidebar-w); min-width: 0; display: flex; flex-direction: column; transition: margin .25s ease; }
+  .main.expanded { margin-left: var(--sidebar-w-collapsed); }
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    height: 72px; display: flex; align-items: center; gap: 16px;
+    padding: 0 24px;
+    background: rgba(7,10,17,.75); backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border);
+  }
+  .icon-btn {
+    width: 40px; height: 40px; border-radius: 12px; flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted); border: 1px solid var(--border); background: var(--card);
+    transition: all .2s ease;
+  }
+  .icon-btn:hover { color: var(--text); border-color: var(--border2); }
+  .icon-btn svg { width: 18px; height: 18px; }
+  .burger { display: none; }
+  .collapse-btn { display: none; }
+  .topbar-titles { flex: 1; min-width: 0; }
+  .topbar-titles h1 { font-size: 20px; font-weight: 700; letter-spacing: .2px; }
+  .topbar-titles p { font-size: 12px; color: var(--muted); }
+  .topbar-actions { display: flex; align-items: center; gap: 12px; }
+  .search {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 0 12px; height: 40px; width: 240px;
+    transition: border-color .2s ease;
+  }
+  .search:focus-within { border-color: var(--accent); }
+  .search svg { width: 16px; height: 16px; color: var(--faint); flex: 0 0 auto; }
+  .search input { background: none; border: none; outline: none; color: var(--text); font-size: 13px; width: 100%; }
+  .search input::placeholder { color: var(--faint); }
+  .segmented { display: flex; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 3px; }
+  .seg-btn { padding: 7px 14px; border-radius: 9px; font-size: 13px; font-weight: 600; color: var(--muted); transition: all .2s ease; }
+  .seg-btn.active { background: linear-gradient(135deg, var(--accent), #5a8bff); color: #fff; box-shadow: 0 4px 12px rgba(124,108,255,.35); }
+  .demo-badge {
+    font-size: 10px; font-weight: 800; letter-spacing: 1.5px;
+    color: var(--amber); border: 1px solid rgba(245,165,36,.35);
+    background: rgba(245,165,36,.08); padding: 5px 10px; border-radius: 999px;
+  }
+  .avatar {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: linear-gradient(135deg, #2fd4a7, #4f8cff);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 13px; color: #04121a;
+  }
+
+  /* ---------- Content ---------- */
+  .content { padding: 24px; width: 100%; max-width: 1460px; margin: 0 auto; }
+  .view { display: none; }
+  .view.active { display: block; animation: rise .45s ease both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+  /* ---------- Cards ---------- */
+  .card {
+    background: linear-gradient(180deg, var(--card2), var(--card));
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 20px;
+  }
+  .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+  .card-head h3 { font-size: 15px; font-weight: 700; }
+  .card-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 16px; border-radius: 12px; font-size: 13px; font-weight: 600; transition: all .2s ease; }
+  .btn svg { width: 15px; height: 15px; }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), #5a8bff); color: #fff; box-shadow: 0 6px 16px rgba(124,108,255,.35); }
+  .btn-primary:hover { filter: brightness(1.1); }
+  .btn-ghost { border: 1px solid var(--border); color: var(--muted); background: transparent; }
+  .btn-ghost:hover { color: var(--text); border-color: var(--border2); }
+
+  /* ---------- KPI ---------- */
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .stat-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
+  .customers-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .kpi-card { display: flex; gap: 14px; align-items: flex-start; }
+  .kpi-icon {
+    width: 44px; height: 44px; border-radius: 13px; flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, rgba(124,108,255,.25), rgba(79,140,255,.15));
+    border: 1px solid rgba(124,108,255,.3); color: var(--accent);
+  }
+  .kpi-icon svg { width: 20px; height: 20px; }
+  .kpi-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .kpi-label { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .8px; }
+  .kpi-value { font-size: 25px; font-weight: 800; letter-spacing: -.5px; margin-top: 2px; }
+  .kpi-meta { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+  .kpi-delta { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .kpi-delta.up { color: var(--green); background: rgba(47,212,167,.12); }
+  .kpi-delta.down { color: var(--red); background: rgba(242,109,109,.12); }
+  .kpi-sub { font-size: 11px; color: var(--faint); }
+
+  /* ---------- Chart ---------- */
+  .grid-2 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-top: 16px; }
+  .chart-wrap { position: relative; height: 300px; }
+  .chart-wrap canvas { position: relative; height: 100%; }
+  .chart-total { text-align: right; }
+  .chart-total-label { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .chart-total-value { font-size: 20px; font-weight: 800; }
+  .donut-wrap { position: relative; height: 210px; display: flex; align-items: center; justify-content: center; }
+  .donut-legend { list-style: none; margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .donut-legend li { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .donut-legend .dot { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
+  .legend-name { color: var(--muted); flex: 1; }
+  .legend-val { font-weight: 700; }
+  .legend-pct { color: var(--faint); font-size: 12px; width: 44px; text-align: right; }
+
+  /* ---------- Table ---------- */
+  .table-card { margin-top: 16px; }
+  .table-wrap { overflow-x: auto; margin: 0 -20px; padding: 0 20px; }
+  .data-table { width: 100%; border-collapse: collapse; min-width: 620px; }
+  .data-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--faint); font-weight: 700; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  .data-table td { padding: 13px 12px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
+  .data-table tbody tr { transition: background .15s ease; }
+  .data-table tbody tr:hover { background: rgba(148,163,184,.04); }
+  .data-table tbody tr:last-child td { border-bottom: none; }
+  .data-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .data-table .strong { font-weight: 700; }
+  .mono { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace; font-size: 12px; color: var(--muted); }
+  .cell-main { font-weight: 600; }
+  .cell-sub { font-size: 11px; color: var(--faint); }
+  .muted { color: var(--muted); }
+  .empty-cell { text-align: center; color: var(--muted); padding: 28px !important; }
+  .status { display: inline-block; padding: 4px 11px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+  .status.paid { color: var(--green); background: rgba(47,212,167,.12); }
+  .status.pending { color: var(--amber); background: rgba(245,165,36,.12); }
+  .status.refunded { color: var(--red); background: rgba(242,109,109,.12); }
+
+  /* ---------- Chips ---------- */
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip { padding: 7px 14px; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--muted); border: 1px solid var(--border); background: transparent; transition: all .2s ease; }
+  .chip:hover { color: var(--text); border-color: var(--border2); }
+  .chip.active { background: rgba(124,108,255,.16); border-color: rgba(124,108,255,.5); color: #b7a8ff; }
+
+  /* ---------- Settings ---------- */
+  .settings-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 16px; }
+  .setting-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+  .setting-row:last-child { border-bottom: none; }
+  .setting-name { font-weight: 600; font-size: 14px; }
+  .setting-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .switch { width: 46px; height: 26px; border-radius: 999px; background: rgba(148,163,184,.2); position: relative; transition: background .2s ease; flex: 0 0 auto; }
+  .switch::after { content:''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform .2s ease; }
+  .switch.on { background: var(--green); }
+  .switch.on::after { transform: translateX(20px); }
+  .swatches { display: flex; gap: 12px; margin-top: 8px; }
+  .swatch { width: 38px; height: 38px; border-radius: 50%; background: var(--c); border: 2px solid transparent; transition: all .2s ease; }
+  .swatch.active { border-color: #fff; box-shadow: 0 0 0 4px rgba(255,255,255,.12); }
+
+  /* ---------- Sidebar foot / toast ---------- */
+  .sidebar-foot { margin-top: auto; padding: 14px 10px 4px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+  .demo-chip { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--amber); background: rgba(245,165,36,.08); border: 1px solid rgba(245,165,36,.3); padding: 8px 12px; border-radius: 10px; text-align: center; }
+  .sidebar-version { font-size: 11px; color: var(--faint); text-align: center; }
+  .sidebar-overlay { display: none; }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translate(-50%, 20px);
+    background: var(--card2); border: 1px solid var(--border2); color: var(--text);
+    padding: 12px 20px; border-radius: 12px; font-size: 13px; font-weight: 600;
+    opacity: 0; pointer-events: none; transition: all .25s ease; z-index: 100;
+    box-shadow: 0 12px 32px rgba(0,0,0,.5);
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 1200px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .stat-strip { grid-template-columns: repeat(2, 1fr); }
+    .customers-grid { grid-template-columns: repeat(2, 1fr); }
+    .settings-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 1024px) {
+    .sidebar { transform: translateX(-105%); width: var(--sidebar-w) !important; }
+    .sidebar.collapsed { width: var(--sidebar-w) !important; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay {
+      display: block; position: fixed; inset: 0; z-index: 55;
+      background: rgba(4,6,10,.6); opacity: 0; pointer-events: none; transition: opacity .25s ease;
+    }
+    .sidebar-overlay.show { opacity: 1; pointer-events: auto; }
+    .main, .main.expanded { margin-left: 0; }
+    .burger { display: flex; }
+    .collapse-btn { display: none; }
+    .grid-2 { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 760px) {
+    .content { padding: 16px; }
+    .topbar { padding: 0 14px; gap: 10px; }
+    .topbar-titles p { display: none; }
+    .topbar-titles h1 { font-size: 17px; }
+    .search { display: none; }
+    .kpi-grid { grid-template-columns: 1fr; }
+    .stat-strip { grid-template-columns: 1fr; }
+    .customers-grid { grid-template-columns: 1fr; }
+    .kpi-value { font-size: 22px; }
+    .card { padding: 16px; }
+    .table-wrap { margin: 0 -16px; padding: 0 16px; }
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-mark">В</div>
+        <div class="brand-text">
+          <div class="brand-name">Вектор</div>
+          <div class="brand-sub">Аналитика</div>
+        </div>
+      </div>
+      <nav class="nav">
+        <button class="nav-item active" data-view="dashboard">
+          <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg></span>
+          <span class="nav-label">Главная</span>
+        </button>
+        <button class="nav-item" data-view="orders">
+          <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span>
+          <span class="nav-label">Заказы</span>
+        </button>
+        <button class="nav-item" data-view="customers">
+          <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+          <span class="nav-label">Клиенты</span>
+        </button>
+        <button class="nav-item" data-view="settings">
+          <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.91 2 2 0 0 1-2.73 1.27 2 2 0 0 1-1.06-.35 2 2 0 0 1-2 0 2 2 0 0 1-.59-.17 2 2 0 0 1-2.73-.41 2 2 0 0 1-1.27-2.73 2 2 0 0 1 0-2.91l.06-.06a1.65 1.65 0 0 0 1.82-.33 1.65 1.65 0 0 0 .33-1.82l-.06-.06a2 2 0 0 1 0-2.91 2 2 0 0 1 2.73-1.27 2 2 0 0 1 1.06.35 2 2 0 0 1 2 0 2 2 0 0 1 .59.17 2 2 0 0 1 2.73.41 2 2 0 0 1 1.27 2.73 2 2 0 0 1 0 2.91l-.06.06a1.65 1.65 0 0 0-.33 1.82z"/></svg></span>
+          <span class="nav-label">Настройки</span>
+        </button>
+      </nav>
+      <div class="sidebar-foot">
+        <div class="demo-chip">Демо-данные</div>
+        <div class="sidebar-version">Вектор Analytics · v1.0</div>
+      </div>
+    </aside>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <div class="main" id="main">
+      <header class="topbar">
+        <button class="icon-btn burger" id="burger" aria-label="Открыть меню">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg>
+        </button>
+        <button class="icon-btn collapse-btn" id="collapseBtn" aria-label="Свернуть меню">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14l8-8 8 8"/></svg>
+        </button>
+        <div class="topbar-titles">
+          <h1 id="pageTitle">Дашборд</h1>
+          <p id="pageSubtitle">Ключевые метрики малого бизнеса</p>
+        </div>
+        <div class="topbar-actions">
+          <label class="search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input id="searchInput" type="text" placeholder="Поиск по заказам…">
+          </label>
+          <div class="segmented" id="periodSwitch">
+            <button class="seg-btn active" data-period="7">7 дней</button>
+            <button class="seg-btn" data-period="30">30 дней</button>
+          </div>
+          <span class="demo-badge">ДЕМО</span>
+          <div class="avatar">АК</div>
+        </div>
+      </header>
+      <main class="content" id="content">
+        <section class="view active" id="view-dashboard">
+          <div class="kpi-grid" id="kpiGrid"></div>
+          <div class="grid-2">
+            <div class="card chart-card">
+              <div class="card-head">
+                <div>
+                  <h3>Выручка</h3>
+                  <p class="card-sub">Динамика по дням · за выбранный период</p>
+                </div>
+                <div class="chart-total">
+                  <span class="chart-total-label">Итого</span>
+                  <span class="chart-total-value" id="chartPeriodTotal">—</span>
+                </div>
+              </div>
+              <div class="chart-wrap"><canvas id="revenueChart"></canvas></div>
+            </div>
+            <div class="card donut-card">
+              <div class="card-head">
+                <div>
+                  <h3>Распределение</h3>
+                  <p class="card-sub">По категориям продаж</p>
+                </div>
+              </div>
+              <div class="donut-wrap"><canvas id="donutChart"></canvas></div>
+              <ul class="donut-legend" id="donutLegend"></ul>
+            </div>
+          </div>
+          <div class="card table-card">
+            <div class="card-head">
+              <div>
+                <h3>Последние заказы</h3>
+                <p class="card-sub">10 последних заказов по демо-наборам</p>
+              </div>
+              <button class="btn btn-ghost" id="btnRefresh">Обновить</button>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Заказ</th>
+                    <th>Клиент</th>
+                    <th>Услуга</th>
+                    <th>Дата</th>
+                    <th class="num">Сумма</th>
+                    <th>Статус</th>
+                  </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" id="view-orders">
+          <div class="stat-strip" id="ordersStats"></div>
+          <div class="card table-card">
+            <div class="card-head">
+              <div>
+                <h3>Все заказы</h3>
+                <p class="card-sub" id="ordersSub">Заказы за выбранный период</p>
+              </div>
+              <div class="chips" id="statusChips">
+                <button class="chip active" data-status="all">Все</button>
+                <button class="chip" data-status="paid">Оплачен</button>
+                <button class="chip" data-status="pending">Ожидается</button>
+                <button class="chip" data-status="refunded">Возврат</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Заказ</th>
+                    <th>Клиент</th>
+                    <th>Услуга</th>
+                    <th>Дата</th>
+                    <th>Канал</th>
+                    <th class="num">Сумма</th>
+                    <th>Статус</th>
+                  </tr>
+                </thead>
+                <tbody id="ordersTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" id="view-customers">
+          <div class="customers-grid" id="customersGrid"></div>
+        </section>
+
+        <section class="view" id="view-settings">
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <h3>Уведомления</h3>
+                <p class="card-sub">Персональные настройки уведомлений</p>
+              </div>
+            </div>
+            <div class="setting-row">
+              <div>
+                <div class="setting-name">Email-отчёты</div>
+                <div class="setting-sub">Отправлять отчёт по электронной почте</div>
+              </div>
+              <button class="switch on" data-setting="email" id="settingEmail" aria-pressed="true"></button>
+            </div>
+            <div class="setting-row">
+              <div>
+                <div class="setting-name">Недельная сводка</div>
+                <div class="setting-sub">Сводка каждую пятницу в 10:00</div>
+              </div>
+              <button class="switch" data-setting="weekly" id="settingWeekly" aria-pressed="false"></button>
+            </div>
+            <div class="setting-row">
+              <div>
+                <div class="setting-name">Автосохранение</div>
+                <div class="setting-sub">Автоматически сохранять дашборд</div>
+              </div>
+              <button class="switch on" data-setting="backup" id="settingBackup" aria-pressed="true"></button>
+            </div>
+            <div class="setting-row">
+              <div>
+                <div class="setting-name">Звуковые оповещения</div>
+                <div class="setting-sub">Звук при новых оплатах</div>
+              </div>
+              <button class="switch" data-setting="sound" id="settingSound" aria-pressed="false"></button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <h3>Внешний вид</h3>
+                <p class="card-sub">Цвет акцента интерфейса</p>
+              </div>
+            </div>
+            <div class="swatches" id="swatches">
+              <button class="swatch active" data-accent="violet" style="--c:#7c6cff" aria-label="Фиолетовый"></button>
+              <button class="swatch" data-accent="blue" style="--c:#4f8cff" aria-label="Синий"></button>
+              <button class="swatch" data-accent="green" style="--c:#2fd4a7" aria-label="Зелёный"></button>
+              <button class="swatch" data-accent="amber" style="--c:#f5a524" aria-label="Оранжевый"></button>
+            </div>
+            <p class="setting-sub" style="margin-top:14px">Акцент применяется мгновенно ко всему интерфейсу.</p>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <h3>Демонстрационные данные</h3>
+                <p class="card-sub">Данные этого дашборда являются демонстрационными</p>
+              </div>
+            </div>
+            <button class="btn btn-primary" id="btnResetDemo">Сбросить демо-данные</button>
+            <p class="setting-sub" style="margin-top:12px">Все показатели формируются автоматически из общего массива исходных данных.</p>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+/* ================= Демо-данные ================= */
+const STATUS_LABEL = { paid: 'Оплачен', pending: 'Ожидается', refunded: 'Возврат' };
+
+const ORDER_SOURCE = [
+  { id: 'V-2381', customer: 'ООО «Атлант»', service: 'Корпоративный курс «Менеджеры»', category: 'Курсы', amount: 148000, cost: 56000, offset: 1, status: 'paid', channel: 'Офлайн' },
+  { id: 'V-2380', customer: 'ИП Соколов', service: 'Подписка Pro · набор', category: 'Подписки', amount: 12900, cost: 3100, offset: 1, status: 'paid', channel: 'Онлайн' },
+  { id: 'V-2379', customer: 'А. Смирнова', service: 'Консультация «Стратегия»', category: 'Консультации', amount: 45000, cost: 18000, offset: 2, status: 'paid', channel: 'Онлайн' },
+  { id: 'V-2378', customer: 'ООО «Орбита»', service: 'Онлайн-курс «Аналитик»', category: 'Курсы', amount: 98000, cost: 39000, offset: 3, status: 'paid', channel: 'Онлайн' },
+  { id: 'V-2377', customer: 'ИП Громов', service: 'Персональная тренировка', category: 'Тренировки', amount: 6200, cost: 2400, offset: 4, status: 'paid', channel: 'Офлайн' },
+  { id: 'V-2376', customer: 'ООО «Квант»', service: 'Подписка Business', category: 'Подписки', amount: 39900, cost: 9800, offset: 5, status: 'paid', channel: 'Онлайн' },
+  { id: 'V-2375', customer: 'Д. Фролов', service: 'Консультация «Продукт»', category: 'Консультации', amount: 35000, cost: 14000, offset: 6, status: 'paid', channel: 'Онлайн' },
+  { id: 'V-2374', customer: 'ООО «Луна»', service: 'Корпоративный курс «Маркетинг»', category: 'Курсы', amount: 175000, cost: 69000, offset: 8, status: 'paid', channel: 'Офлайн' },
+  { id: 'V-2373', customer: 'ИП Назаров', service: 'Групповая тренировка', category: 'Тренировки', amount: 5400, cost: 2100, offset: 9, status: 'paid', channel: 'Офлайн' },
+  { id: 'V-2372', customer: 'ООО «Феникс»', service: 'Онлайн-курс «Вебинар»', category: 'Курсы', amount: 7500, cost: 2900, offset: 11, status: 'paid', channel: 'Онлайн' },
+  { id: 'V-2371', customer: 'ИП Захаров', service: 'Подписка Team', category: 'Подписки', amount: 21900, cost: 5600, offset: 13, status: 'paid', channel: 'Онлайн' },
+  { id: 'V-2370', customer: 'ООО «Полюс»', service: 'Консультация «Аналитика»', category: 'Консультации', amount: 52000, cost: 23000, offset: 14, status: 'paid', channel: 'Онлайн' },
+  { id: 'V-2369', customer: 'ИП Шестаков', service: 'Персональная тренировка', category: 'Тренировки', amount: 6400, cost: 2500, offset: 16, status: 'paid', channel: 'Офлайн' },
+  { id: 'V-2368', customer: 'ООО «Север»', service: 'Корпоративный курс «ИТ»', category: 'Курсы', amount: 198000, cost: 78000, offset: 18, status: 'paid', channel: 'Офлайн' },
+  { id: 'V-2367', customer: 'ООО «Волга»', service: 'Подписка Pro', category: 'Подписки', amount: 12900, cost: 3100, offset: 20, status: 'paid', channel: 'Онлайн' },
+  { id: 'V-2366', customer: 'С. Мельник', service: 'Консультация «Рост»', category: 'Консультации', amount: 48000, cost: 19000, offset: 22, status: 'paid', channel: 'Онлайн' },
+  { id: 'V-2365', customer: 'ИП Козлов', service: 'Групповая тренировка', category: 'Тренировки', amount: 5100, cost: 1950, offset: 24, status: 'paid', channel: 'Офлайн' },
+  { id: 'V-2364', customer: 'ООО «Дубрава»', service: 'Онлайн-курс «CRM»', category: 'Курсы', amount: 89000, cost: 35000, offset: 26, status: 'paid', channel: 'Онлайн' },
+  { id: 'V-2363', customer: 'ИП Лебедев', service: 'Подписка Team', category: 'Подписки', amount: 21900, cost: 5600, offset: 28, status: 'paid', channel: 'Онлайн' },
+  { id: 'V-2362', customer: 'ООО «Заря»', service: 'Корпоративный курс «Управление»', category: 'Курсы', amount: 162000, cost: 64000, offset: 30, status: 'paid', channel: 'Офлайн' },
+  { id: 'V-2361', customer: 'ИП Орлов', service: 'Консультация «Продукт»', category: 'Консультации', amount: 33000, cost: 13000, offset: 33, status: 'paid', channel: 'Онлайн' },
+  { id: 'V-2360', customer: 'ООО «Речка»', service: 'Персональная тренировка', category: 'Тренировки', amount: 6100, cost: 2400, offset: 35, status: 'paid', channel: 'Офлайн' },
+  { id: 'V-2359', customer: 'ИП Васильев', service: 'Подписка Pro', category: 'Подписки', amount: 12900, cost: 3100, offset: 38, status: 'paid', channel: 'Онлайн' },
+  { id: 'V-2358', customer: 'ООО «Сканер»', service: 'Онлайн-курс «Бизнес-аналитика»', category: 'Курсы', amount: 109000, cost: 43000, offset: 41, status: 'paid', channel: 'Онлайн' },
+  { id: 'V-2357', customer: 'ИП Егоров', service: 'Групповая тренировка', category: 'Тренировки', amount: 5300, cost: 2050, offset: 44, status: 'paid', channel: 'Офлайн' },
+  { id: 'V-2356', customer: 'ИП Артемов', service: 'Подписка Team', category: 'Подписки', amount: 21900, cost: 5600, offset: 3, status: 'refunded', channel: 'Онлайн' },
+  { id: 'V-2355', customer: 'ИП Белов', service: 'Консультация «Стратегия»', category: 'Консультации', amount: 47000, cost: 19000, offset: 47, status: 'pending', channel: 'Онлайн' },
+];
+
+let ORDERS = [];
+function buildOrders() {
+  ORDERS = ORDER_SOURCE.map(function (o) {
+    return {
+      id: o.id, customer: o.customer, service: o.service, category: o.category,
+      amount: o.amount, cost: o.cost, offset: o.offset, status: o.status, channel: o.channel,
+      date: new Date(Date.now() - o.offset * 86400000)
+    };
+  });
+}
+
+/* ================= Форматтеры ================= */
+const fmtRub = function (v) {
+  return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(Math.round(v));
+};
+const fmtInt = function (v) { return new Intl.NumberFormat('ru-RU').format(Math.round(v)); };
+const fmtCompact = function (v) { return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', notation: 'compact', maximumFractionDigits: 1 }).format(v); };
+const fmtDateShort = function (d) { return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }); };
+const fmtDateLong = function (d) { return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }); };
+
+/* ================= Периметр и состояние ================= */
+let PERIOD = 30;
+const state = { statusFilter: 'all', query: '' };
+
+/* ================= Метрики ================= */
+function periodRange(days) {
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  const from = new Date(now); from.setDate(from.getDate() - days + 1);
+  const to = new Date(now); to.setDate(to.getDate() + 1);
+  return { now: now, from: from, to: to };
+}
+function inPeriod(o, days) {
+  const r = periodRange(days);
+  const od = new Date(o.date); od.setHours(0, 0, 0, 0);
+  return od >= r.from && od < r.to;
+}
+function validOrders(days) { return ORDERS.filter(function (o) { return inPeriod(o, days) && o.status !== 'refunded'; }); }
+function prevValidOrders(days) {
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  const curFrom = new Date(now); curFrom.setDate(curFrom.getDate() - days + 1);
+  const prevFrom = new Date(curFrom); prevFrom.setDate(prevFrom.getDate() - days);
+  return ORDERS.filter(function (o) {
+    const od = new Date(o.date); od.setHours(0, 0, 0, 0);
+    return od >= prevFrom && od < curFrom && o.status !== 'refunded';
+  });
+}
+function pct(a, b) { return b === 0 ? 0 : ((a - b) / Math.abs(b)) * 100; }
+
+function getPeriodMetrics(days) {
+  const cur = validOrders(days);
+  const prev = prevValidOrders(days);
+  const revenue = cur.reduce(function (s, o) { return s + o.amount; }, 0);
+  const profit = cur.reduce(function (s, o) { return s + (o.amount - o.cost); }, 0);
+  const prevRevenue = prev.reduce(function (s, o) { return s + o.amount; }, 0);
+  const prevProfit = prev.reduce(function (s, o) { return s + (o.amount - o.cost); }, 0);
+  const orders = cur.length;
+  const prevOrders = prev.length;
+  const customers = new Set(cur.map(function (o) { return o.customer; })).size;
+  const prevCustomers = new Set(prev.map(function (o) { return o.customer; })).size;
+  return {
+    revenue: revenue, profit: profit, orders: orders, customers: customers,
+    revenueDelta: pct(revenue, prevRevenue),
+    profitDelta: pct(profit, prevProfit),
+    ordersDelta: pct(orders, prevOrders),
+    customersDelta: pct(customers, prevCustomers)
+  };
+}
+
+function getDailySeries(days) {
+  const r = periodRange(days);
+  const map = new Map();
+  for (let i = 0; i < days; i++) { const d = new Date(r.from); d.setDate(d.getDate() + i); map.set(d.getTime(), 0); }
+  validOrders(days).forEach(function (o) {
+    const od = new Date(o.date); od.setHours(0, 0, 0, 0);
+    const k = od.getTime();
+    map.set(k, (map.get(k) || 0) + o.amount);
+  });
+  const labels = [], data = [];
+  for (let i = 0; i < days; i++) { const d = new Date(r.from); d.setDate(d.getDate() + i); labels.push(fmtDateShort(d)); data.push(map.get(d.getTime()) || 0); }
+  return { labels: labels, data: data };
+}
+
+function getCategoryDistribution(days) {
+  const map = new Map();
+  validOrders(days).forEach(function (o) { map.set(o.category, (map.get(o.category) || 0) + o.amount); });
+  const entries = Array.from(map.entries()).sort(function (a, b) { return b[1] - a[1]; });
+  const colors = ['#7c6cff', '#2fd4a7', '#4f8cff', '#f5a524', '#f26d6d', '#38bdf8', '#c084fc'];
+  const top = entries.slice(0, 5);
+  const rest = entries.slice(5);
+  const labels = top.map(function (e) { return e[0]; });
+  const data = top.map(function (e) { return e[1]; });
+  const colorArr = top.map(function (e, i) { return colors[i % colors.length]; });
+  const restSum = rest.reduce(function (s, e) { return s + e[1]; }, 0);
+  if (rest.length) { data.push(restSum); labels.push('Прочие'); colorArr.push('#5b6478'); }
+  return { labels: labels, data: data, colorArr: colorArr };
+}
+
+function getOrdersList(days, statusFilter, query) {
+  const list = ORDERS.filter(function (o) { return inPeriod(o, days); });
+  const filtered = statusFilter && statusFilter !== 'all' ? list.filter(function (o) { return o.status === statusFilter; }) : list;
+  const q = (query || '').trim().toLowerCase();
+  const result = q ? filtered.filter(function (o) {
+    return o.id.toLowerCase().indexOf(q) !== -1 || o.customer.toLowerCase().indexOf(q) !== -1 || o.service.toLowerCase().indexOf(q) !== -1 || o.category.toLowerCase().indexOf(q) !== -1;
+  }) : filtered;
+  return result.slice().sort(function (a, b) { return b.date - a.date; });
+}
+
+function getCustomers(days) {
+  const map = new Map();
+  validOrders(days).forEach(function (o) {
+    var c = map.get(o.customer);
+    if (!c) { c = { name: o.customer, orders: 0, revenue: 0, profit: 0, lastDate: o.date }; map.set(o.customer, c); }
+    c.orders = c.orders + 1;
+    c.revenue = c.revenue + o.amount;
+    c.profit = c.profit + (o.amount - o.cost);
+    if (o.date > c.lastDate) c.lastDate = o.date;
+  });
+  const res = Array.from(map.values()).map(function (c) { c.avg = c.revenue / Math.max(1, c.orders); return c; });
+  return res.sort(function (a, b) { return b.revenue - a.revenue; });
+}
+
+/* ================= Рендер: KPI ================= */
+const ICONS = {
+  wallet: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-8"/><path d="M18 6H5.5a2.5 2.5 0 0 0 0 5h13a2.5 2.5 0 0 1 0 5H8"/></svg>',
+  trend: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 7l-8.65 8.65a2 2 0 0 1-2.83 0L2 7"/><path d="M7 7h6a2 2 0 0 1 0 4H7"/><path d="M7 7v4"/></svg>',
+  cart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l2.4 13.2a2 2 0 0 0 2 1.8h9.6a2 2 0 0 0 2-1.8L21 7H6"/><path d="M7 21h13"/><path d="M9 21v-8"/><path d="M13 21v-8"/></svg>',
+  users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>'
+};
+
+function renderKPIs() {
+  var m = getPeriodMetrics(PERIOD);
+  var marRatio = m.revenue > 0 ? (m.profit / m.revenue) * 100 : 0;
+  var cards = [
+    { icon: 'wallet', label: 'Выручка', value: fmtRub(m.revenue), delta: m.revenueDelta, foot: 'за ' + PERIOD + ' дней' },
+    { icon: 'trend', label: 'Прибыль', value: fmtRub(m.profit), delta: m.profitDelta, foot: 'маржа ' + marRatio.toFixed(0) + '%' },
+    { icon: 'cart', label: 'Заказы', value: fmtInt(m.orders), delta: m.ordersDelta, foot: 'за ' + PERIOD + ' дней' },
+    { icon: 'users', label: 'Клиенты', value: fmtInt(m.customers), delta: m.customersDelta, foot: 'активные за период' }
+  ];
+  document.getElementById('kpiGrid').innerHTML = cards.map(function (c, i) {
+    var dir = c.delta >= 0 ? 'up' : 'down';
+    return '<div class="card kpi-card rise" style="animation-delay:' + (i * 70) + 'ms">' +
+      '<div class="kpi-icon">' + ICONS[c.icon] + '</div>' +
+      '<div class="kpi-body">' +
+        '<span class="kpi-label">' + c.label + '</span>' +
+        '<span class="kpi-value">' + c.value + '</span>' +
+        '<span class="kpi-meta">' +
+          '<span class="kpi-delta ' + dir + '">' + (c.delta >= 0 ? '+' : '-') + Math.abs(c.delta).toFixed(1).replace('.', ',') + '%</span>' +
+          '<span class="kpi-sub">' + c.foot + '</span>' +
+        '</span>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+/* ================= Рендер: график ================= */
+var chartInstance = null;
+function renderChart() {
+  var canvas = document.getElementById('revenueChart');
+  var series = getDailySeries(PERIOD);
+  var total = series.data.reduce(function (s, v) { return s + v; }, 0);
+  document.getElementById('chartPeriodTotal').textContent = fmtRub(total);
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+  var accent = (getComputedStyle(document.documentElement).getPropertyValue('--accent') || '#7c6cff').trim();
+  var ctx = canvas.getContext('2d');
+  var grad = ctx.createLinearGradient(0, 0, 0, 280);
+  grad.addColorStop(0, 'rgba(124,108,255,0.35)');
+  grad.addColorStop(1, 'rgba(124,108,255,0)');
+  chartInstance = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: series.labels,
+      datasets: [{
+        label: 'Выручка',
+        data: series.data,
+        borderColor: accent,
+        backgroundColor: grad,
+        borderWidth: 2.5,
+        fill: true,
+        tension: 0.35,
+        borderCapStyle: 'round',
+        pointRadius: 2,
+        pointHoverRadius: 6,
+        pointBackgroundColor: '#fff',
+        pointBorderColor: accent,
+        pointHoverBackgroundColor: accent,
+        pointHoverBorderColor: '#fff'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(16,22,36,0.95)',
+          borderColor: 'rgba(148,163,184,0.2)',
+          borderWidth: 1,
+          titleFont: { size: 12, color: '#b1b9c8' },
+          bodyFont: { size: 13, color: '#e9edf5' },
+          padding: 12,
+          displayColors: false,
+          callbacks: { label: function (c) { return ' Выручка: ' + fmtRub(c.parsed.y); } }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#8a93a5', maxTicksLimit: 8, maxRotation: 0, autoSkip: true }, border: { display: false } },
+        y: {
+          beginAtZero: true, grid: { color: 'rgba(148,163,184,0.07)' },
+          ticks: { color: '#8a93a5', callback: function (v) { return fmtCompact(v); } },
+          border: { display: false }
+        }
+      }
+    }
+  });
+}
+
+/* ================= Рендер: donut ================= */
+var donutInstance = null;
+function renderDonut() {
+  var canvas = document.getElementById('donutChart');
+  var dist = getCategoryDistribution(PERIOD);
+  if (donutInstance) { donutInstance.destroy(); donutInstance = null; }
+  donutInstance = new Chart(canvas, {
+    type: 'doughnut',
+    data: { labels: dist.labels, datasets: [{ label: 'Продажи', data: dist.data, backgroundColor: dist.colorArr, borderColor: '#0e1320', borderWidth: 2, hoverOffset: 8 }] },
+    options: {
+      responsive: true, maintainAspectRatio: true, cutout: '62%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(16,22,36,0.95)', borderColor: 'rgba(148,163,184,0.2)', borderWidth: 1,
+          titleFont: { size: 12, color: '#b1b9c8' }, bodyFont: { size: 13, color: '#e9edf5' },
+          padding: 12, displayColors: true, callbacks: { label: function (c) { return c.label + ': ' + fmtRub(c.parsed); } }
+        }
+      }
+    }
+  });
+  var total = dist.data.reduce(function (s, v) { return s + v; }, 0);
+  var legendEl = document.getElementById('donutLegend');
+  legendEl.innerHTML = dist.labels.map(function (l, i) {
+    return '<li><span class="dot" style="background:' + dist.colorArr[i] + '"></span><span class="legend-name">' + l + '</span><span class="legend-val">' + fmtRub(dist.data[i]) + '</span><span class="legend-pct">' + (total ? ((dist.data[i] / total) * 100).toFixed(1).replace('.', ',') : 0) + '%</span></li>';
+  }).join('');
+}
+
+/* ================= Рендер: таблица ================= */
+function orderRow(o) {
+  return '<tr>' +
+    '<td class="mono">№ ' + o.id + '</td>' +
+    '<td><div class="cell-main">' + o.customer + '</div><div class="cell-sub">' + o.category + '</div></td>' +
+    '<td>' + o.service + '</td>' +
+    '<td class="muted">' + fmtDateLong(o.date) + '</td>' +
+    '<td class="num strong">' + fmtRub(o.amount) + '</td>' +
+    '<td><span class="status ' + o.status + '">' + (STATUS_LABEL[o.status] || 'Активен') + '</span></td>' +
+  '</tr>';
+}
+function renderTable() {
+  var list = getOrdersList(PERIOD, state.statusFilter, state.query);
+  var rows = list.slice(0, 10);
+  var tbody = document.getElementById('tableBody');
+  tbody.innerHTML = rows.length ? rows.map(function (o) { return orderRow(o); }).join('') : '<tr><td colspan="6" class="empty-cell">Заказы не найдены</td></tr>';
+}
+
+/* ================= Рендер: заказы ================= */
+function renderOrdersView() {
+  var list = getOrdersList(PERIOD, state.statusFilter, state.query);
+  var valid = list.filter(function (o) { return o.status !== 'refunded'; });
+  var revenue = valid.reduce(function (s, o) { return s + o.amount; }, 0);
+  var profit = valid.reduce(function (s, o) { return s + (o.amount - o.cost); }, 0);
+  var refunds = list.filter(function (o) { return o.status === 'refunded'; }).reduce(function (s, o) { return s + o.amount; }, 0);
+  var avgCheck = valid.length ? revenue / valid.length : 0;
+  document.getElementById('ordersSub').textContent = 'Заказы за период · ' + PERIOD + ' дней · найдено: ' + list.length;
+  document.getElementById('ordersStats').innerHTML =
+    '<div class="card kpi-card"><div class="kpi-icon">' + ICONS.cart + '</div><div class="kpi-body"><span class="kpi-label">Заказы</span><span class="kpi-value">' + fmtInt(valid.length) + '</span><span class="kpi-meta"><span class="kpi-sub">за период</span></span></div></div>' +
+    '<div class="card kpi-card"><div class="kpi-icon">' + ICONS.wallet + '</div><div class="kpi-body"><span class="kpi-label">Выручка</span><span class="kpi-value">' + fmtRub(revenue) + '</span><span class="kpi-meta"><span class="kpi-sub">за период</span></span></div></div>' +
+    '<div class="card kpi-card"><div class="kpi-icon">' + ICONS.trend + '</div><div class="kpi-body"><span class="kpi-label">Средний чек</span><span class="kpi-value">' + fmtRub(avgCheck) + '</span><span class="kpi-meta"><span class="kpi-sub">по оплаченным</span></span></div></div>' +
+    '<div class="card kpi-card"><div class="kpi-icon">' + ICONS.trend + '</div><div class="kpi-body"><span class="kpi-label">Возвраты</span><span class="kpi-value">' + fmtRub(refunds) + '</span><span class="kpi-meta"><span class="kpi-sub">сумма возвратов</span></span></div></div>';
+  var tbody = document.getElementById('ordersTableBody');
+  var rows = list.slice(0, 50);
+  tbody.innerHTML = rows.length ? rows.map(function (o) {
+    return '<tr>' +
+      '<td class="mono">№ ' + o.id + '</td>' +
+      '<td><div class="cell-main">' + o.customer + '</div><div class="cell-sub">' + o.category + '</div></td>' +
+      '<td>' + o.service + '</td>' +
+      '<td class="muted">' + fmtDateLong(o.date) + '</td>' +
+      '<td class="muted">' + o.channel + '</td>' +
+      '<td class="num strong">' + fmtRub(o.amount) + '</td>' +
+      '<td><span class="status ' + o.status + '">' + (STATUS_LABEL[o.status] || 'Активен') + '</span></td>' +
+    '</tr>';
+  }).join('') : '<tr><td colspan="7" class="empty-cell">Заказы не найдены</td></tr>';
+}
+
+/* ================= Рендер: клиенты ================= */
+function renderCustomersView() {
+  var list = getCustomers(PERIOD).slice(0, 6);
+  document.getElementById('customersGrid').innerHTML = list.length ? list.map(function (c, i) {
+    var initials = c.name.replace(/[^A-Za-zА-Яа-яЁё]/g, '').split(/\s+/).slice(0, 2).map(function (s) { return s ? s[0].toUpperCase() : ''; }).join('');
+    return '<div class="card kpi-card rise" style="animation-delay:' + (i * 70) + 'ms">' +
+      '<div class="kpi-icon">' + ICONS.users + '</div>' +
+      '<div class="kpi-body">' +
+        '<span class="kpi-label">Клиент</span>' +
+        '<span class="kpi-value" style="font-size:19px">' + c.name + '</span>' +
+        '<span class="kpi-meta"><span class="kpi-sub">' + c.orders + ' заказов · средний чек ' + fmtRub(c.avg) + '</span></span>' +
+      '</div>' +
+      '<div style="margin-left:auto; text-align:right"><div class="kpi-value" style="font-size:18px">' + fmtRub(c.revenue) + '</div><span class="kpi-sub">за период</span></div>' +
+    '</div>';
+  }).join('') : '<div class="card"><p class="muted">Клиенты не найдены</p></div>';
+}
+
+/* ================= Рендер: настройки ================= */
+function renderSettingsView() {}
+
+/* ================= Навигация ================= */
+const TITLES = { dashboard: 'Дашборд', orders: 'Заказы', customers: 'Клиенты', settings: 'Настройки' };
+const SUBTITLES = {
+  dashboard: 'Ключевые метрики малого бизнеса',
+  orders: 'Журнал заказов и выплат',
+  customers: 'Активные клиенты за период',
+  settings: 'Настройки интерфейса и уведомлений'
+};
+
+function setView(name) {
+  document.querySelectorAll('.nav-item').forEach(function (b) { b.classList.toggle('active', b.dataset.view === name); });
+  document.querySelectorAll('.view').forEach(function (v) { v.classList.toggle('active', v.id === 'view-' + name); });
+  document.getElementById('pageTitle').textContent = TITLES[name];
+  document.getElementById('pageSubtitle').textContent = SUBTITLES[name];
+  var chips = document.querySelectorAll('.chip');
+  chips.forEach(function (c) { c.classList.toggle('active', c.dataset.status === state.statusFilter); });
+  if (name === 'dashboard') { renderKPIs(); renderChart(); renderDonut(); renderTable(); }
+  if (name === 'orders') renderOrdersView();
+  if (name === 'customers') renderCustomersView();
+  if (name === 'settings') renderSettingsView();
+}
+
+/* ================= Обновление ================= */
+function refreshCurrentView() {
+  var view = document.querySelector('.view.active');
+  if (!view) return;
+  var name = view.id.replace('view-', '');
+  if (name === 'dashboard') { renderKPIs(); renderChart(); renderDonut(); renderTable(); }
+  if (name === 'orders') renderOrdersView();
+  if (name === 'customers') renderCustomersView();
+  if (name === 'settings') renderSettingsView();
+}
+
+function refreshAll() {
+  if (document.getElementById('view-dashboard').classList.contains('active')) { renderKPIs(); renderChart(); renderDonut(); renderTable(); }
+  if (document.getElementById('view-orders').classList.contains('active')) renderOrdersView();
+  if (document.getElementById('view-customers').classList.contains('active')) renderCustomersView();
+  if (document.getElementById('view-settings').classList.contains('active')) renderSettingsView();
+}
+
+/* ================= Настройки ================= */
+const SETTINGS = { email: true, weekly: false, backup: true, sound: false };
+let ACCENT = '#7c6cff';
+function setAccent(name) {
+  var map = { violet: '#7c6cff', blue: '#4f8cff', green: '#2fd4a7', amber: '#f5a524' };
+  ACCENT = map[name] || '#7c6cff';
+  document.documentElement.style.setProperty('--accent', ACCENT);
+  try { localStorage.setItem('vct-accent', ACCENT); } catch (e) {}
+}
+function renderAccentSwatches() {
+  var active = document.querySelector('.swatch[data-accent="' + ACCENT + '"]');
+  document.querySelectorAll('.swatch').forEach(function (b) { b.classList.toggle('active', b.dataset.accent === ACCENT); });
+}
+function regenerateDemo() {
+  ORDER_SOURCE.forEach(function (o) {
+    o.amount = Math.round((o.amount || 1000) * (0.8 + Math.random() * 0.4));
+    o.cost = Math.round(o.amount * (0.15 + Math.random() * 0.25));
+  });
+  buildOrders();
+}
+
+/* ================= Утилиты ================= */
+function showToast(text) {
+  var t = document.getElementById('toast');
+  t.textContent = text;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(function () { t.classList.remove('show'); }, 2200);
+}
+
+/* ================= Инициализация ================= */
+function bindEvents() {
+  document.querySelectorAll('[data-period]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      PERIOD = parseInt(btn.dataset.period, 10);
+      document.querySelectorAll('[data-period]').forEach(function (b) { b.classList.toggle('active', parseInt(b.dataset.period, 10) === PERIOD); });
+      refreshCurrentView();
+    });
+  });
+  document.querySelectorAll('.nav-item').forEach(function (b) {
+    b.addEventListener('click', function () { setView(b.dataset.view); });
+  });
+  document.getElementById('burger').addEventListener('click', function () {
+    var sb = document.getElementById('sidebar');
+    sb.classList.toggle('open');
+    document.getElementById('sidebarOverlay').classList.toggle('show');
+  });
+  document.getElementById('sidebarOverlay').addEventListener('click', function () {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('show');
+  });
+  document.getElementById('collapseBtn').addEventListener('click', function () {
+    var sb = document.getElementById('sidebar');
+    var main = document.getElementById('main');
+    sb.classList.toggle('collapsed');
+    main.classList.toggle('expanded');
+  });
+  document.getElementById('btnRefresh').addEventListener('click', function () { regenerateDemo(); buildOrders(); refreshCurrentView(); showToast('Демо-данные обновлены'); });
+  document.getElementById('btnResetDemo').addEventListener('click', function () { regenerateDemo(); buildOrders(); refreshCurrentView(); showToast('Демо-данные сброшены'); });
+  document.getElementById('searchInput').addEventListener('input', function (e) { state.query = e.target.value; refreshCurrentView(); });
+  document.querySelectorAll('.chip').forEach(function (c) {
+    c.addEventListener('click', function () { state.statusFilter = c.dataset.status; refreshCurrentView(); });
+  });
+  document.querySelectorAll('[data-setting]').forEach(function (t) {
+    t.addEventListener('click', function () {
+      SETTINGS[t.dataset.setting] = t.classList.toggle('on');
+      t.setAttribute('aria-pressed', String(SETTINGS[t.dataset.setting]));
+    });
+  });
+  document.querySelectorAll('.swatch').forEach(function (b) {
+    b.addEventListener('click', function () { setAccent(b.dataset.accent); renderAccentSwatches(); });
+  });
+}
+
+function init() {
+  buildOrders();
+  try { var saved = localStorage.getItem('vct-accent'); if (saved) { ACCENT = saved; document.documentElement.style.setProperty('--accent', ACCENT); } } catch (e) { ACCENT = '#7c6cff'; }
+  renderAccentSwatches();
+  bindEvents();
+  setView('dashboard');
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
